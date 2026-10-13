@@ -95,6 +95,7 @@ for dir in "$SKILLS_DIR"/*/; do
 
   name="$(install_name "$md")"
   [[ -n $name ]] || name="$(basename "$dir")"
+  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "bad skill name: $name" >&2; continue; }
   all_names+=("$name")
   wants "$name" || continue
   matched+=("$name")

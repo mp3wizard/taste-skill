@@ -268,6 +268,10 @@ A portable instruction file agents can load automatically; install via `npx skil
 **Do image-generation skills install with `npx skills add`?**  
 Yes. They live under `skills/` alongside the code skills so the same CLI discovers them.
 
+## Security
+
+Last audit: 2026-10-13. 8 tools run (security-analysis agent, gitleaks, trufflehog, trivy, osv-scanner, semgrep, mcp-exfil-scan, skillspector). 0 critical/high; 1 medium, 3 low, 3 info. Fixed: install.sh skill-name validation (SEC-002). Remaining: symlink-install trust and unpinned `npx skills` docs. See SECURITY_REPORT.md.
+
 ## License
 
 [MIT License](LICENSE) · Copyright (c) 2026 Leonxlnx
