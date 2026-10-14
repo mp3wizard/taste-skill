@@ -282,7 +282,7 @@ If Taste Skill helps you, consider sponsoring:
 
 ## Security
 
-Last audit: 2026-10-13. 8 tools run (security-analysis agent, gitleaks, trufflehog, trivy, osv-scanner, semgrep, mcp-exfil-scan, skillspector). 0 critical/high; 1 medium, 3 low, 3 info. Fixed: install.sh skill-name validation (SEC-002). Remaining: symlink-install trust and unpinned `npx skills` docs. See SECURITY_REPORT.md.
+Last audit: 2026-10-14. 9 tools run (gitleaks, trufflehog, semgrep, trivy, osv-scanner, mcp-exfil-scan, skillspector, skill-audit, manual agent review). Findings: 1 medium, 4 low, 4 informational, no live secrets. Fixed: local server dotfile/realpath hardening, image size cap, credit-link scheme check. Details in SECURITY_REPORT.md.
 
 ## License
 
