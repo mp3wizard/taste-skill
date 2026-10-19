@@ -12,7 +12,7 @@
 //
 // Exit code 0 = no FAIL findings. Exit code 1 = at least one FAIL (the page is not done).
 // Zero dependencies: drives an installed Chrome/Edge/Chromium. Node 22+.
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, createReadStream, readdirSync, unlinkSync } from 'node:fs';
+import { realpathSync, existsSync, mkdirSync, readFileSync, writeFileSync, statSync, createReadStream, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, join, relative, dirname, extname, sep } from 'node:path';
 import { createServer } from 'node:http';
 import { Browser, sleep } from './lib/cdp.mjs';
@@ -52,7 +52,10 @@ if (!/^https?:\/\//.test(target)) {
     try {
       let f = resolve(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
       if (f !== root && !f.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
+      if (relative(root, f).split(sep).some((s) => s.startsWith('.'))) { res.writeHead(403); return res.end(); }
       if (statSync(f).isDirectory()) f = join(f, 'index.html');
+      const rr = realpathSync(root); const rf = realpathSync(f);
+      if (rf !== rr && !rf.startsWith(rr + sep)) { res.writeHead(403); return res.end(); }
       res.writeHead(200, { 'content-type': MIME[extname(f).toLowerCase()] || 'application/octet-stream', 'content-length': statSync(f).size, 'cache-control': 'no-store' });
       createReadStream(f).pipe(res);
     } catch { res.writeHead(404); res.end('not found'); }

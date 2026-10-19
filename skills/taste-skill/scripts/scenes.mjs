@@ -10,7 +10,7 @@
 //
 // Exit code 0 = every scene ran; 1 = a scene never started, fell back to rest on desktop, or the page
 // logged errors. Zero dependencies: drives an installed Chrome/Edge/Chromium. Node 22+.
-import { existsSync, mkdirSync, statSync, createReadStream } from 'node:fs';
+import { existsSync, mkdirSync, statSync, createReadStream, realpathSync } from 'node:fs';
 import { resolve, join, dirname, extname, sep, relative } from 'node:path';
 import { createServer } from 'node:http';
 import { Browser, sleep } from './lib/cdp.mjs';
@@ -36,7 +36,10 @@ if (!/^https?:\/\//.test(target)) {
     try {
       let f = resolve(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
       if (f !== root && !f.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
+      if (relative(root, f).split(sep).some((s) => s.startsWith('.'))) { res.writeHead(403); return res.end(); }
       if (statSync(f).isDirectory()) f = join(f, 'index.html');
+      const rr = realpathSync(root); const rf = realpathSync(f);
+      if (rf !== rr && !rf.startsWith(rr + sep)) { res.writeHead(403); return res.end(); }
       res.writeHead(200, { 'content-type': MIME[extname(f).toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-store' });
       createReadStream(f).pipe(res);
     } catch { res.writeHead(404); res.end('not found'); }

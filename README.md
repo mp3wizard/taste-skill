@@ -252,6 +252,10 @@ If Taste Skill helps you, consider sponsoring:
 
 <sub>Taste Skill has no official token, coin, or crypto project. Any token using my name, image, or project is unaffiliated and not endorsed by me.</sub>
 
+## Security
+
+Last audit: 2026-10-19. 10 tools run (gitleaks, trufflehog, semgrep, trivy, osv-scanner, mcps-audit, mcp-exfil-scan, skillspector, skill-audit, manual agent review). Findings: 3 low, 3 informational, no CVEs, no live secrets. Fixed: scenes.mjs dotfile/realpath guard, charts.js label escaping. Remaining: assets.mjs redirect allowlist, inspect.mjs root scope. Details in SECURITY_REPORT.md.
+
 ## License
 
 [MIT License](LICENSE) · Copyright (c) 2026 Leonxlnx

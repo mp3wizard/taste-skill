@@ -745,7 +745,9 @@ async function getOne(ref, opts) {
   const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   const ext = WEB_TYPES[type];
   if (!ext) throw new Error(`the file is ${type || 'of no stated type'}, not a web image.`);
+  if (+r.headers.get('content-length') > 50e6) throw new Error('the image is over 50 MB, refusing to download it.');
   const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length > 50e6) throw new Error('the image is over 50 MB, refusing to save it.');
   if (!buf.length) throw new Error('the image was empty.');
   const d = dims(buf);
   mkdirSync(opts.to, { recursive: true });
@@ -840,11 +842,12 @@ function printCredits(opts) {
   const list = readCredits(opts);
   const uniq = list.filter((c, i) => list.findIndex((x) => x.ref === c.ref) === i && existsSync(resolve(c.file)));
   if (!uniq.length) { console.log(`No pictures recorded in ${rel(creditsPath(opts))} yet. Download them with --get <ref> first.`); return 1; }
+  const safeUrl = (u) => (/^https?:\/\//i.test(u || '') ? u : '#');
   const html = (c) => {
     const by = c.creator && !/^(unknown|anonymous)\b/i.test(c.creator) ? ` by ${esc(short(c.creator, 60))}` : '';
     const date = /^(aic|met):/.test(c.ref) && c.date ? `, ${esc(short(c.date, 30))}` : '';
-    const lic = c.licenseUrl ? `<a href="${esc(c.licenseUrl)}">${esc(c.license)}</a>` : esc(c.license);
-    return `<a href="${esc(c.page)}">“${esc(short(c.title, 90))}”</a>${by}${date}, ${lic}, via ${esc(c.via)}`;
+    const lic = c.licenseUrl ? `<a href="${esc(safeUrl(c.licenseUrl))}">${esc(c.license)}</a>` : esc(c.license);
+    return `<a href="${esc(safeUrl(c.page))}">“${esc(short(c.title, 90))}”</a>${by}${date}, ${lic}, via ${esc(c.via)}`;
   };
   const media = new Set(uniq.map((c) => c.media || 'image'));
   const label = media.size > 1 ? 'Pictures and footage' : media.has('video') ? 'Footage' : 'Pictures';
