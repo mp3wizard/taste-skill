@@ -231,7 +231,7 @@ If Taste Skill helps you, consider sponsoring:
 
 ## Security
 
-Last audit: 2026-10-19. 10 tools run (gitleaks, trufflehog, semgrep, trivy, osv-scanner, mcps-audit, mcp-exfil-scan, skillspector, skill-audit, manual agent review). Findings: 3 low, 3 informational, no CVEs, no live secrets. Fixed: scenes.mjs dotfile/realpath guard, charts.js label escaping. Remaining: assets.mjs redirect allowlist, inspect.mjs root scope. Details in SECURITY_REPORT.md.
+Last audit: 2026-10-20. 13 tools run (gitleaks, trufflehog, bandit, semgrep, trivy, osv-scanner, mcps-audit, mcp-exfil-scan, skillspector, skill-audit, config-audit, manual agent review). Findings: 3 low, 6 informational, no CVEs, no live secrets. Fixed: charts.js tooltip escaping, CI token permissions. Remaining: assets.mjs redirect allowlist, dev-server Host check, CI SHA pinning. Details in SECURITY_REPORT.md.
 
 ## License
 
