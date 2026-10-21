@@ -1,32 +1,30 @@
-# Security Report — 2026-10-20
+# Security Report — 2026-10-21
 ## Tools Run
 | Tool | Status | Finding count |
 |---|---|---|
-| Gitleaks | run | 7 (history only, false positives) |
-| TruffleHog | run | 20 unverified, 0 verified (false positives) |
-| Bandit | run | 0 (no .py files) |
-| Semgrep OWASP / secrets | run | 0 / 0 |
-| Trivy | run | 0 (no manifests) |
-| OSV-Scanner | run | 0 (no lockfiles) |
-| mcps-audit | run | 80 (heuristic; one real: charts.js tooltip, fixed) |
-| skill-security-auditor | run | 0 |
-| mcp-exfil-scan | run | 0 |
-| skillspector (--no-llm) | run | 74 (noise) |
-| config-audit | run | host-scope only |
-| mcp-scan, Jev, CodeQL | skipped | opt-in off / not applicable |
+| gitleaks | OK (history) | 7 (false positives) |
+| trufflehog | OK | 20 unverified, 0 verified (false positives) |
+| trivy | OK | 0 |
+| osv-scanner | OK (no lockfiles) | 0 |
+| semgrep | OK | 2 (CI) |
+| skillspector (no LLM) | OK, degraded | 0 |
+| skill-audit | OK | 0 |
+| mcp-exfil-scan | OK | 0 |
+| config-audit | OK | 0 |
+| manual agent review | OK | 13 |
+| mcps-audit, bandit, mcp-scan, CodeQL | N/A or skipped | - |
 ## Findings
-No CVEs, no live secrets. 3 Low, 6 Informational.
-- SEC-001 Low: assets.mjs follows redirects with no host allowlist; body buffered before 50 MB cap.
-- SEC-002 Low: charts.js:303 tooltip inserted labels/series names unescaped (DOM XSS).
-- SEC-003 Low: inspect.mjs/scenes.mjs dev server serves cwd, no Host header check (DNS rebinding, narrow).
-- SEC-004/005 Info: gitleaks/trufflehog history-only false positives.
-- SEC-006 Info: skillspector/mcps-audit heuristic noise.
-- SEC-007 Info: headless Chrome launch flags (cdp.mjs).
-- SEC-008 Info: CI actions on mutable tags, no permissions block.
-- SEC-009 Info: unpinned `npx skills` in install docs.
-- SEC-010 Info: history file at ~/.taste-skill/history.json.
+No CVEs, no live secrets. 8 Low, 5 Informational:
+- L01 mutable action tags (check-skills.yml:15-16)
+- L02 npm install without --ignore-scripts (check-skills.yml:21)
+- L03 preview servers serve whole cwd (inspect.mjs, scenes.mjs)
+- L04 realpath/read race in static servers
+- L05 drop() may SIGKILL recycled PID (cdp.mjs:84)
+- L06 assets.mjs follows redirects to any host (SSRF)
+- L07 assets.mjs poster fetch has no size cap
+- L08 innerHTML re-parse in stage.js:106
+- I01 history-only secret-scanner false positives; I02-I05 tmp sweep, URL navigation, labels/charts.js interpolation
 ## Fixes Applied
-- SEC-002: charts.js tooltip now uses esc() for labels and series names.
-- SEC-008 (partial): workflow now sets `permissions: contents: read`.
+None this run. Findings are upstream code behavior; left unpatched to avoid fork divergence. Merged upstream hardening (profile ownership sweep).
 ## Known Remaining Issues
-SEC-001 (URL/host allowlist, streamed size cap), SEC-003 (Host header check), SEC-008 (SHA pinning), SEC-009, SEC-007, SEC-010. Deep-audit not run (unattended run).
+All items above. Manifests (.claude-plugin, .codex-plugin) not read in depth. Deep-audit skipped (unattended run).
