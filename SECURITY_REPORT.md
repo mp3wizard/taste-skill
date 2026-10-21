@@ -25,6 +25,13 @@ No CVEs, no live secrets. 8 Low, 5 Informational:
 - L08 innerHTML re-parse in stage.js:106
 - I01 history-only secret-scanner false positives; I02-I05 tmp sweep, URL navigation, labels/charts.js interpolation
 ## Fixes Applied
-None this run. Findings are upstream code behavior; left unpatched to avoid fork divergence. Merged upstream hardening (profile ownership sweep).
+- L01 CI actions pinned to commit SHAs; L02 npm install uses --ignore-scripts
+- L03 preview servers serve only the target file's folder (TASTE_SERVE_CWD=1 widens) and reject wrong Host header
+- L05 Chrome pid cleared on exit, so drop() never signals a recycled pid
+- L06 assets.mjs rejects non-http(s), localhost and private/link-local literal hosts (no DNS resolution, redirects not re-checked)
+- L07 poster download capped at 50 MB
+- L08 stage.js builds spans with DOM APIs, not innerHTML
 ## Known Remaining Issues
-All items above. Manifests (.claude-plugin, .codex-plugin) not read in depth. Deep-audit skipped (unattended run).
+- L04 check/use race in static servers (needs local write access; accepted)
+- L06 DNS-based and redirect-based SSRF not covered
+- I01-I05 informational, no action

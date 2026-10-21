@@ -240,7 +240,15 @@ const clock = (s) => { if (!s && s !== 0) return null; const t = Math.round(s); 
 const imageHeaders = (url) => ({ 'User-Agent': UA, Accept: 'image/*', ...(/^https?:\/\/[^/]*artic\.edu\//.test(url) ? AIC_HEADERS : {}) });
 // Does the file load, is it something a browser shows, and how large is it? Reads only the first
 // 128 KB of an image, or 512 KB of a video (enough for an MP4's size and duration).
+// ponytail: literal-host check only (no DNS resolution); resolve + re-check redirects if this ever fronts untrusted refs
+function publicUrl(u) {
+  let x; try { x = new URL(u); } catch { return false; }
+  if (!/^https?:$/.test(x.protocol)) return false;
+  const h = x.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return !(h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal') || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h === '::1' || /^(fc|fd|fe80)/.test(h));
+}
 async function probe(url, ms = 15000, video = false, again = true) {
+  if (!publicUrl(url)) return { ok: false, why: 'non-public address' };
   const ac = new AbortController(); const timer = setTimeout(() => ac.abort(), ms);
   const want = video ? 524288 : 131072;
   try {
@@ -738,6 +746,7 @@ async function getOne(ref, opts) {
   if (!it || !it.image) throw new Error(`no usable ${['archive', 'nasa'].includes(src) ? 'video (no rendition a browser plays, or the record is gone)' : 'image (not public domain, or the record has no picture)'}.`);
   if (!opts.licences.includes(it.license)) throw new Error(`its licence is ${licenceLabel(it)}, outside the ones allowed (${opts.licences.join(', ')}). Pass --license all to take it anyway, and say why in your report.`);
   if (it.media === 'video') return getVideo(it, src, id, opts);
+  if (!publicUrl(it.image)) throw new Error('the image address is not a public http(s) URL.');
   let r;
   try { r = await fetch(it.image, { headers: imageHeaders(it.image), signal: AbortSignal.timeout(90000) }); }
   catch (e) { throw new Error(`the image did not download (${e.name === 'TimeoutError' ? 'timed out' : e.cause?.code || e.message}).`); }
@@ -804,9 +813,10 @@ async function getVideo(it, src, id, opts) {
   let poster = null;
   if (it.poster) {
     try {
+      if (!publicUrl(it.poster)) throw new Error('non-public poster');
       const pr = await fetch(it.poster, { headers: imageHeaders(it.poster), signal: AbortSignal.timeout(60000) });
       const pt = (pr.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-      if (pr.ok && WEB_TYPES[pt]) { poster = file.replace(/\.[^.]+$/, `-poster.${WEB_TYPES[pt]}`); writeFileSync(poster, Buffer.from(await pr.arrayBuffer())); }
+      if (pr.ok && WEB_TYPES[pt] && !(+pr.headers.get('content-length') > 50e6)) { const pb = Buffer.from(await pr.arrayBuffer()); if (pb.length <= 50e6) { poster = file.replace(/\.[^.]+$/, `-poster.${WEB_TYPES[pt]}`); writeFileSync(poster, pb); } }
     } catch { poster = null; }
   }
   const entry = {

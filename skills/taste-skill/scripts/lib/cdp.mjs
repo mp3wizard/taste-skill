@@ -98,6 +98,7 @@ export class Browser {
     ];
     const proc = spawn(exe, args, { stdio: ['ignore', 'ignore', 'pipe'] });
     pid = proc.pid;
+    proc.on('exit', () => { pid = 0; }); // never signal a pid the OS may have recycled
     claim(pid);
     const wsUrl = await new Promise((resolve, reject) => {
       let buf = '';

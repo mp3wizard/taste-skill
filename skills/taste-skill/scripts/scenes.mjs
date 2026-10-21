@@ -30,10 +30,12 @@ if (!/^https?:\/\//.test(target)) {
   const file = resolve(target);
   if (!existsSync(file)) { console.error('No such file: ' + file); process.exit(2); }
   const cwd = resolve('.');
-  const root = file.startsWith(cwd + sep) ? cwd : dirname(file);
+  const root = process.env.TASTE_SERVE_CWD && file.startsWith(cwd + sep) ? cwd : dirname(file); // serve the file's folder; TASTE_SERVE_CWD=1 widens to cwd
+  const PORT_HOST = () => `127.0.0.1:${server.address().port}`;
   const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm', '.woff': 'font/woff', '.woff2': 'font/woff2' };
   server = createServer((req, res) => {
     try {
+      if (req.headers.host !== PORT_HOST()) { res.writeHead(403); return res.end(); } // blocks DNS rebinding
       let f = resolve(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
       if (f !== root && !f.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
       if (relative(root, f).split(sep).some((s) => s.startsWith('.'))) { res.writeHead(403); return res.end(); }
