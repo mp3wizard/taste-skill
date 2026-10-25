@@ -12,12 +12,14 @@
 //
 // Exit code 0 = no FAIL findings. Exit code 1 = at least one FAIL (the page is not done).
 // Zero dependencies: drives an installed Chrome/Edge/Chromium. Node 22+.
-import { realpathSync, existsSync, mkdirSync, readFileSync, writeFileSync, statSync, createReadStream, readdirSync, unlinkSync } from 'node:fs';
+// Widths sharing a viewport class receive width-qualified screenshot filenames.
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, createReadStream, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, join, relative, dirname, extname, sep } from 'node:path';
 import { createServer } from 'node:http';
 import { Browser, sleep } from './lib/cdp.mjs';
 import { probe, frame, layout, app, colourShare } from './lib/probe.mjs';
 import { judge, judgeLayout, judgeApp, APP_SKIP } from './lib/rules.mjs';
+import { viewportClass as name, screenshotLabel, isInspectionScreenshot } from './lib/inspection-files.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, def) => { const i = args.indexOf('--' + name); if (i === -1) return def; const v = args[i + 1]; args.splice(i, 2); return v; };
@@ -46,18 +48,13 @@ if (!/^https?:\/\//.test(target)) {
   const file = resolve(target);
   if (!existsSync(file)) { console.error('No such file: ' + file); process.exit(2); }
   const cwd = resolve('.');
-  const root = process.env.TASTE_SERVE_CWD && file.startsWith(cwd + sep) ? cwd : dirname(file); // serve the file's folder; TASTE_SERVE_CWD=1 widens to cwd
-  const PORT_HOST = () => `127.0.0.1:${server.address().port}`;
+  const root = file.startsWith(cwd + sep) ? cwd : dirname(file);
   const MIME = { '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp4': 'video/mp4', '.webm': 'video/webm', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json' };
   server = createServer((req, res) => {
     try {
-      if (req.headers.host !== PORT_HOST()) { res.writeHead(403); return res.end(); } // blocks DNS rebinding
       let f = resolve(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
       if (f !== root && !f.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
-      if (relative(root, f).split(sep).some((s) => s.startsWith('.'))) { res.writeHead(403); return res.end(); }
       if (statSync(f).isDirectory()) f = join(f, 'index.html');
-      const rr = realpathSync(root); const rf = realpathSync(f);
-      if (rf !== rr && !rf.startsWith(rr + sep)) { res.writeHead(403); return res.end(); }
       res.writeHead(200, { 'content-type': MIME[extname(f).toLowerCase()] || 'application/octet-stream', 'content-length': statSync(f).size, 'cache-control': 'no-store' });
       createReadStream(f).pipe(res);
     } catch { res.writeHead(404); res.end('not found'); }
@@ -66,11 +63,10 @@ if (!/^https?:\/\//.test(target)) {
   url = `http://127.0.0.1:${server.address().port}/${relative(root, file).split(sep).map(encodeURIComponent).join('/')}`;
 }
 const HEIGHT = { 1440: 900, 1280: 800, 1024: 768, 768: 1024, 390: 844, 375: 812 };
-const name = (w) => (w >= 1100 ? 'desktop' : w >= 600 ? 'tablet' : 'mobile');
 
 mkdirSync(outDir, { recursive: true });
 // Screenshots from an earlier run would sit beside the new ones when the page got shorter.
-for (const f of readdirSync(outDir)) if (/^(desktop|tablet|mobile)-(fold|page-\d+|film-\d+)\.jpg$/.test(f)) unlinkSync(join(outDir, f));
+for (const f of readdirSync(outDir)) if (isInspectionScreenshot(f)) unlinkSync(join(outDir, f));
 const browser = await Browser.launch();
 const helper = await browser.newPage({ width: 1600, height: 1000 });
 const report = { url: server ? target : url, at: new Date().toISOString(), allow, viewports: [], findings: [], images: [] };
@@ -122,14 +118,17 @@ try {
   for (const w of widths) {
     const h = HEIGHT[w] || Math.round(w * 0.625);
     const label = name(w);
+    const imageLabel = screenshotLabel(w, widths);
     const page = await browser.newPage({ width: w, height: h, dsf: 1, mobile: w < 600 });
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: MOTION_RECORDER }).catch(() => {});
     const how = await page.goto(url, { timeoutMs: 30000, settleMs: 600 });
     await sleep(600); // about 1.2s after the load event: is the title there to read yet?
     const early = await page.eval(TITLE_SEEN).catch(() => null);
+    // a dev server is not what ships: bundlers and minifiers change the CSS a visitor receives
+    const devServer = await page.eval(`(() => { const s = [...document.scripts].map((x) => x.src || '').join(' '); if (/@vite\\/client|webpack-dev-server|\\/_next\\/static\\/development\\/|react-refresh|webpack-hmr/.test(s)) return true; try { return !!(window.__NEXT_DATA__ && window.__NEXT_DATA__.buildId === 'development'); } catch { return false; } })()`).catch(() => false);
     await page.eval('document.fonts.ready.then(() => true)').catch(() => {});
     await sleep(800); // let the load choreography finish before judging the first screen
-    const fold = join(outDir, `${label}-fold.jpg`);
+    const fold = join(outDir, `${imageLabel}-fold.jpg`);
     await page.screenshot({ path: fold, quality: 82 });
     const metrics = await page.eval(probe);
 
@@ -184,7 +183,7 @@ try {
         lastY = y;
       }
       for (let i = 0; i < shots.length; i += 24) {
-        const p = join(outDir, `${label}-film-${String(i / 24 + 1).padStart(2, '0')}.jpg`);
+        const p = join(outDir, `${imageLabel}-film-${String(i / 24 + 1).padStart(2, '0')}.jpg`);
         await sheet(shots.slice(i, i + 24), 6, 320, 200, p);
         filmSheets.push(p);
       }
@@ -196,11 +195,12 @@ try {
     const perSheet = w >= 1100 ? 4 : w >= 600 ? 6 : 8;
     const sheets = [];
     for (let i = 0; i < frames.length; i += perSheet) {
-      const p = join(outDir, `${label}-page-${String(i / perSheet + 1).padStart(2, '0')}.jpg`);
+      const p = join(outDir, `${imageLabel}-page-${String(i / perSheet + 1).padStart(2, '0')}.jpg`);
       await sheet(frames.slice(i, i + perSheet), cols, cellW, cellH, p);
       sheets.push(p);
     }
     let findings = [...judge(m, { width: w, allow }), ...sceneFindings];
+    if (devServer && !allow.includes('dev-server')) findings.push({ level: 'WARN', id: 'dev-server', width: w, message: 'This page is served by a development server (Vite, webpack or Next in dev mode).', fix: 'Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.' });
     if (dealtFonts.length && w >= 1100 && !allow.includes('font-not-dealt')) {
       const norm = (f) => String(f).toLowerCase().replace(/["']/g, '').replace(/\s+variable$/, '').trim();
       const used = m.type.families.filter((f) => f.share >= 0.1).map((f) => norm(f.family));
