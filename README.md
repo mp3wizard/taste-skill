@@ -231,7 +231,7 @@ If Taste Skill helps you, consider sponsoring:
 
 ## Security
 
-Last audit: 2026-10-21. 10 tools run (gitleaks, trufflehog, trivy, osv-scanner, semgrep, skillspector, skill-audit, mcp-exfil-scan, config-audit, manual agent review). Findings: 8 low, 5 informational, no CVEs, no live secrets. Fixes: CI SHA pinning, preview-server root + Host check, asset URL host filter and poster cap, stage.js DOM-built spans. Remaining: DNS/redirect SSRF, static-server race. Details in SECURITY_REPORT.md.
+Last audit: 2026-10-25. 9 tools run (gitleaks, trufflehog, trivy, osv-scanner, semgrep, skillspector, skill-audit, mcp-exfil-scan, manual agent review). Findings: 2 low, 4 informational, no CVEs, no live secrets. Fixes: restored fork hardening in inspect.mjs lost in the v2.1.5 merge (Host check, dotfile block, symlink check), null-safe esc in charts.js. Remaining: DNS/redirect SSRF and unbounded image buffering in assets.mjs (upstream code), unpinned CI yaml install. Details in SECURITY_REPORT.md.
 
 ## License
 

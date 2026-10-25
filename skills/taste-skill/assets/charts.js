@@ -38,7 +38,7 @@
   // numbers follow the page's language (<html lang>), so separators match the rest of the screen
   const nf = (o) => new Intl.NumberFormat(document.documentElement.lang || 'en', o);
   // every text value that reaches innerHTML goes through esc: a label from a database is text, never markup
-  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const fmt = {
     int: (v) => nf({ maximumFractionDigits: 0 }).format(v),
     dec: (d) => (v) => nf({ minimumFractionDigits: d, maximumFractionDigits: d }).format(v),
